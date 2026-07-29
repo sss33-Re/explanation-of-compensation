@@ -37,6 +37,14 @@
     font-size: 34px; font-weight: 600; letter-spacing: -0.01em; margin: 0;
   }
   .lead { margin: 10px 0 0; font-size: 14px; color: var(--sub); max-width: 560px; line-height: 1.6; }
+  .sync-row { margin-top: 16px; display: flex; align-items: center; gap: 10px; }
+  .sync-btn {
+    font-size: 12px; font-weight: 500; color: var(--accent); background: var(--card);
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer;
+  }
+  .sync-btn:hover { border-color: var(--accent); }
+  .sync-btn:disabled { opacity: 0.6; cursor: default; }
+  .sync-state { font-size: 12px; color: var(--faint); }
 
   .bars { margin-bottom: 40px; display: flex; flex-direction: column; gap: 24px; }
   .bar-row-label {
@@ -129,6 +137,10 @@
     <p class="eyebrow">料金プラン比較ツール</p>
     <h1>サブスク vs スポット</h1>
     <p class="lead">金額に応じて横幅が変わる比較バーです。下の表で項目名と金額を編集すると、上のバーがそのまま連動します。</p>
+    <div class="sync-row">
+      <button class="sync-btn" id="syncBtn">🔄 スプレッドシートから読み込む</button>
+      <span class="sync-state" id="syncState"></span>
+    </div>
   </header>
 
   <section class="bars" id="bars" aria-label="比較バー"></section>
@@ -187,6 +199,13 @@
     }
   ];
 
+  // ここに、スプレッドシートを「ウェブに公開」して発行されたCSVのURLを貼り付けてください。
+  // File → 共有 → ウェブに公開 → シート「CSV出力」 → 形式「カンマ区切りの値(.csv)」
+  // 未設定（このままの状態）の場合は、スプレッドシート連携をスキップして
+  // ローカル保存データ／初期値のみで動作します。
+  var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHFd1vSHOupv6-Hat4i4-NoLQXplsDc3He5ydFNJELMAvEMkpXFNxYZR4iVRNJIQ/pub?gid=577900453&single=true&output=csv";
+  // 例）var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-xxxxxxx/pub?gid=123456789&single=true&output=csv";
+
   var groups = loadInitial();
   var saveTimer = null;
 
@@ -218,6 +237,88 @@
   }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+  // シンプルなCSVパーサー（ダブルクォート・カンマを含むセルにも対応）
+  function parseCSV(text) {
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          field += c;
+        }
+      } else {
+        if (c === '"') { inQuotes = true; }
+        else if (c === ',') { row.push(field); field = ""; }
+        else if (c === '\n' || c === '\r') {
+          if (c === '\r' && text[i + 1] === '\n') i++;
+          row.push(field); field = "";
+          rows.push(row); row = [];
+        } else {
+          field += c;
+        }
+      }
+    }
+    if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.length > 1 && r.some(function (v) { return v !== ""; }); });
+  }
+
+  // CSV（区分,項目名,金額）を groups 構造に変換。区分の出現順にバーを作る。
+  function csvToGroups(rows) {
+    var dataRows = rows.slice(1); // 先頭行はヘッダーとして除外
+    var order = [];
+    var map = {};
+    dataRows.forEach(function (r, idx) {
+      var category = (r[0] || "").trim();
+      var name = (r[1] || "").trim();
+      var amount = Number(String(r[2] || "0").replace(/[^0-9.\-]/g, "")) || 0;
+      if (!category || !name) return;
+      if (!map[category]) {
+        map[category] = { id: uid("g"), name: category, segments: [] };
+        order.push(category);
+      }
+      map[category].segments.push({ id: uid("s") + "-" + idx, name: name, amount: amount });
+    });
+    return order.map(function (cat) { return map[cat]; });
+  }
+
+  function loadFromSheet(url, silent) {
+    var stateEl = document.getElementById("syncState");
+    var btn = document.getElementById("syncBtn");
+    if (!url) {
+      if (!silent) stateEl.textContent = "CSV_URLが未設定です（コード内のCSV_URLを設定してください）";
+      return Promise.resolve(false);
+    }
+    btn.disabled = true;
+    stateEl.textContent = "読み込み中…";
+    return fetch(url, { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        var rows = parseCSV(text);
+        var newGroups = csvToGroups(rows);
+        if (newGroups.length === 0) throw new Error("データが見つかりませんでした");
+        groups = newGroups;
+        render();
+        stateEl.textContent = "スプレッドシートから読み込みました（" + new Date().toLocaleTimeString("ja-JP") + "）";
+        return true;
+      })
+      .catch(function (err) {
+        stateEl.textContent = "読み込めませんでした：" + err.message;
+        return false;
+      })
+      .finally(function () {
+        btn.disabled = false;
+      });
+  }
 
   function scheduleSave() {
     var el = document.getElementById("saveState");
@@ -403,7 +504,16 @@
     render();
   });
 
+  document.getElementById("syncBtn").addEventListener("click", function () {
+    loadFromSheet(CSV_URL, false);
+  });
+
   render();
+
+  // ページ読み込み時、CSV_URLが設定されていれば自動で1回だけ読み込みを試みる
+  if (CSV_URL) {
+    loadFromSheet(CSV_URL, true);
+  }
 })();
 </script>
 </body>

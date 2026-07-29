@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>サブスク vs スポット 比較ツール</title>
+<style>
+  :root {
+    --bg: #EFF3F6;
+    --card: #FFFFFF;
+    --ink: #1B2A41;
+    --sub: #5B6B7C;
+    --faint: #8A97A3;
+    --line: #DCE2E7;
+    --dash: #C7D0D9;
+    --field: #F7F8F9;
+    --accent: #1F7A5C;
+    --accent-dark: #17604A;
+    --warn: #B5651D;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Hiragino Sans, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 24px; }
+  header { margin-bottom: 32px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--sub); margin: 0 0 8px;
+  }
+  h1 {
+    font-family: Georgia, "Hiragino Mincho ProN", serif;
+    font-size: 34px; font-weight: 600; letter-spacing: -0.01em; margin: 0;
+  }
+  .lead { margin: 10px 0 0; font-size: 14px; color: var(--sub); max-width: 560px; line-height: 1.6; }
+
+  .bars { margin-bottom: 40px; display: flex; flex-direction: column; gap: 24px; }
+  .bar-row-label {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
+  }
+  .bar-row-label .name { font-size: 14px; font-weight: 500; }
+  .bar-row-label .total { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar-row-label .total .unit { font-weight: 400; color: var(--sub); }
+  .bar-track {
+    height: 56px; border-radius: 8px; overflow: hidden; display: flex;
+    background: var(--card); box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+    transition: width 0.3s ease-out;
+  }
+  .seg {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; flex-shrink: 0; border-right: 1px solid rgba(255,255,255,0.25);
+    transition: width 0.3s ease-out; color: #fff; font-size: 13px; line-height: 1.3;
+    text-align: center; white-space: nowrap; padding: 0 6px;
+  }
+  .seg:last-child { border-right: none; }
+  .empty-state {
+    font-size: 14px; color: var(--sub); border: 1px dashed var(--dash); border-radius: 8px;
+    padding: 32px 16px; text-align: center;
+  }
+
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .panel-head h2 {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--sub); margin: 0;
+  }
+  .panel-head-right { display: flex; align-items: center; gap: 12px; }
+  .save-state { font-size: 12px; color: var(--faint); }
+  .reset-btn {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--sub);
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .reset-btn:hover { color: var(--ink); }
+
+  .groups { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (min-width: 720px) { .groups { grid-template-columns: 1fr 1fr; } }
+
+  .group-card { background: var(--card); border-radius: 8px; padding: 16px; box-shadow: 0 0 0 1px rgba(0,0,0,0.05); }
+  .group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .group-name-input {
+    flex: 1; font-size: 14px; font-weight: 600; background: transparent; border: none;
+    border-bottom: 1px solid transparent; outline: none; padding: 4px 2px;
+  }
+  .group-name-input:hover { border-color: var(--dash); }
+  .group-name-input:focus { border-color: var(--accent); }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center; color: var(--faint);
+  }
+  .icon-btn.danger { color: var(--warn); }
+  .icon-btn:hover { background: var(--field); }
+
+  .seg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .seg-name-input, .seg-amount-input {
+    font-size: 13px; background: var(--field); border: none; border-radius: 4px;
+    padding: 7px 8px; outline: none;
+  }
+  .seg-name-input { flex: 1; min-width: 0; }
+  .seg-amount-input { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+  .seg-name-input:focus, .seg-amount-input:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .yen-label { font-size: 12px; color: var(--faint); width: 14px; }
+
+  .add-seg-btn {
+    margin-top: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+    font-weight: 500; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .add-seg-btn:hover { color: var(--accent-dark); }
+
+  .add-group-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 14px; font-weight: 500; color: var(--sub); background: none;
+    border: 1px dashed var(--dash); border-radius: 8px; padding: 12px; cursor: pointer;
+  }
+  .add-group-btn:hover { color: var(--ink); border-color: var(--faint); }
+
+  footer {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--faint); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">料金プラン比較ツール</p>
+    <h1>サブスク vs スポット</h1>
+    <p class="lead">金額に応じて横幅が変わる比較バーです。下の表で項目名と金額を編集すると、上のバーがそのまま連動します。</p>
+  </header>
+
+  <section class="bars" id="bars" aria-label="比較バー"></section>
+
+  <section aria-label="データ編集">
+    <div class="panel-head">
+      <h2>項目を編集</h2>
+      <div class="panel-head-right">
+        <span class="save-state" id="saveState"></span>
+        <button class="reset-btn" id="resetBtn">↺ 例に戻す</button>
+      </div>
+    </div>
+    <div class="groups" id="groups"></div>
+    <button class="add-group-btn" id="addGroupBtn">＋ 比較を追加</button>
+  </section>
+
+  <footer>
+    バーの横幅は「比較の合計金額」に、バー内の区切りは「各項目の金額」に、それぞれ比例しています。編集内容はこのブラウザに自動保存されます。
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "spot-vs-sub-comparison-v1";
+
+  var PALETTE = [
+    "#5B6B7C", "#3B6EA5", "#1F7A5C", "#B8860B", "#8C4B3E",
+    "#6B4E9C", "#A54B6B", "#4E7C8C", "#7A6B3B", "#3B7A6E"
+  ];
+
+  // 「新法人関連報酬_提案シミュレーション」シートの現在値を初期値として反映
+  var DEFAULT_GROUPS = [
+    {
+      id: "g-sub", name: "サブスク",
+      segments: [
+        { id: "s-base-1", name: "毎月の基本料", amount: 450000 },
+        { id: "s-sub", name: "サブスク（全部込み）", amount: 300000 }
+      ]
+    },
+    {
+      id: "g-spot", name: "スポット",
+      segments: [
+        { id: "s-base-2", name: "毎月の基本料", amount: 450000 },
+        { id: "s-1", name: "役員報酬・社会保険料を決める", amount: 30000 },
+        { id: "s-2", name: "社労士・司法書士との連携", amount: 5000 },
+        { id: "s-3", name: "税額シミュレーション（法人税）", amount: 40000 },
+        { id: "s-4", name: "税額シミュレーション（消費税）", amount: 40000 },
+        { id: "s-5", name: "決算・申告（法人税）", amount: 120000 },
+        { id: "s-6", name: "消費税申告", amount: 30000 },
+        { id: "s-7", name: "中間申告", amount: 30000 },
+        { id: "s-8", name: "議事録作成", amount: 10000 },
+        { id: "s-9", name: "消費税シミュレーション・届出", amount: 30000 }
+      ]
+    }
+  ];
+
+  var groups = loadInitial();
+  var saveTimer = null;
+
+  function uid(prefix) {
+    return prefix + "-" + Math.random().toString(36).slice(2, 9);
+  }
+
+  function yen(n) {
+    var v = Number(n) || 0;
+    return v.toLocaleString("ja-JP") + "円";
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str == null ? "" : String(str);
+    return div.innerHTML;
+  }
+
+  function loadInitial() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return clone(DEFAULT_GROUPS);
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      return clone(DEFAULT_GROUPS);
+    } catch (e) {
+      return clone(DEFAULT_GROUPS);
+    }
+  }
+
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+  function scheduleSave() {
+    var el = document.getElementById("saveState");
+    el.textContent = "保存中…";
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(groups));
+        el.textContent = "保存済み";
+      } catch (e) {
+        el.textContent = "保存できませんでした";
+      }
+    }, 400);
+  }
+
+  function groupTotal(g) {
+    return g.segments.reduce(function (sum, s) { return sum + (Number(s.amount) || 0); }, 0);
+  }
+
+  function render() {
+    renderBars();
+    renderGroups();
+    scheduleSave();
+  }
+
+  function renderBars() {
+    var barsEl = document.getElementById("bars");
+    barsEl.innerHTML = "";
+
+    if (groups.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "比較したいプランがありません。下の「＋ 比較を追加」から作成してください。";
+      barsEl.appendChild(empty);
+      return;
+    }
+
+    var maxTotal = Math.max.apply(null, [1].concat(groups.map(groupTotal)));
+
+    groups.forEach(function (g) {
+      var total = groupTotal(g);
+      var widthPct = Math.max((total / maxTotal) * 100, 2);
+
+      var row = document.createElement("div");
+
+      var label = document.createElement("div");
+      label.className = "bar-row-label";
+      label.innerHTML =
+        '<span class="name">' + escapeHtml(g.name || "（無題）") + '</span>' +
+        '<span class="total">' + yen(total) + '<span class="unit"> / 年</span></span>';
+      row.appendChild(label);
+
+      var track = document.createElement("div");
+      track.className = "bar-track";
+      track.style.width = widthPct + "%";
+
+      g.segments.forEach(function (s, i) {
+        var segPct = total > 0 ? ((Number(s.amount) || 0) / total) * 100 : 0;
+        var color = PALETTE[i % PALETTE.length];
+        var seg = document.createElement("div");
+        seg.className = "seg";
+        seg.style.width = segPct + "%";
+        seg.style.backgroundColor = color;
+        seg.title = s.name + "：" + yen(s.amount);
+        if (segPct > 10) {
+          seg.textContent = s.name + "（" + yen(s.amount) + "）";
+        }
+        track.appendChild(seg);
+      });
+
+      row.appendChild(track);
+      barsEl.appendChild(row);
+    });
+  }
+
+  function renderGroups() {
+    var groupsEl = document.getElementById("groups");
+    groupsEl.innerHTML = "";
+
+    groups.forEach(function (g) {
+      var card = document.createElement("div");
+      card.className = "group-card";
+
+      var head = document.createElement("div");
+      head.className = "group-head";
+
+      var nameInput = document.createElement("input");
+      nameInput.className = "group-name-input";
+      nameInput.value = g.name;
+      nameInput.placeholder = "比較の名前（例：サブスク）";
+      nameInput.addEventListener("input", function (e) {
+        g.name = e.target.value;
+        renderBars();
+        scheduleSave();
+      });
+      head.appendChild(nameInput);
+
+      var delGroupBtn = document.createElement("button");
+      delGroupBtn.className = "icon-btn danger";
+      delGroupBtn.title = "この比較を削除";
+      delGroupBtn.textContent = "✕";
+      delGroupBtn.addEventListener("click", function () {
+        groups = groups.filter(function (x) { return x.id !== g.id; });
+        render();
+      });
+      head.appendChild(delGroupBtn);
+
+      card.appendChild(head);
+
+      g.segments.forEach(function (s, i) {
+        var segRow = document.createElement("div");
+        segRow.className = "seg-row";
+
+        var swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.backgroundColor = PALETTE[i % PALETTE.length];
+        segRow.appendChild(swatch);
+
+        var nameEl = document.createElement("input");
+        nameEl.className = "seg-name-input";
+        nameEl.value = s.name;
+        nameEl.placeholder = "項目名";
+        nameEl.addEventListener("input", function (e) {
+          s.name = e.target.value;
+          renderBars();
+          scheduleSave();
+        });
+        segRow.appendChild(nameEl);
+
+        var amountEl = document.createElement("input");
+        amountEl.className = "seg-amount-input";
+        amountEl.type = "number";
+        amountEl.value = s.amount;
+        amountEl.placeholder = "金額";
+        amountEl.addEventListener("input", function (e) {
+          s.amount = e.target.value === "" ? "" : Number(e.target.value);
+          renderBars();
+          scheduleSave();
+        });
+        segRow.appendChild(amountEl);
+
+        var yenLabel = document.createElement("span");
+        yenLabel.className = "yen-label";
+        yenLabel.textContent = "円";
+        segRow.appendChild(yenLabel);
+
+        var delSegBtn = document.createElement("button");
+        delSegBtn.className = "icon-btn";
+        delSegBtn.title = "この項目を削除";
+        delSegBtn.textContent = "✕";
+        delSegBtn.addEventListener("click", function () {
+          g.segments = g.segments.filter(function (x) { return x.id !== s.id; });
+          render();
+        });
+        segRow.appendChild(delSegBtn);
+
+        card.appendChild(segRow);
+      });
+
+      var addSegBtn = document.createElement("button");
+      addSegBtn.className = "add-seg-btn";
+      addSegBtn.textContent = "＋ 項目を追加";
+      addSegBtn.addEventListener("click", function () {
+        g.segments.push({ id: uid("s"), name: "新しい項目", amount: 10000 });
+        render();
+      });
+      card.appendChild(addSegBtn);
+
+      groupsEl.appendChild(card);
+    });
+  }
+
+  document.getElementById("addGroupBtn").addEventListener("click", function () {
+    groups.push({
+      id: uid("g"), name: "新しい比較",
+      segments: [{ id: uid("s"), name: "基本料", amount: 20000 }]
+    });
+    render();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    groups = clone(DEFAULT_GROUPS);
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

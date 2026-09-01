@@ -101,23 +101,15 @@
   .icon-btn.danger { color: var(--warn); }
   .icon-btn:hover { background: var(--field); }
 
-  .seg-block { margin-bottom: 10px; }
+  .seg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .seg-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-  .seg-row-bottom { display: flex; align-items: center; gap: 6px; padding-left: 18px; }
-  .seg-name-input {
-    flex: 1; min-width: 0; font-size: 13px; background: var(--field); border: none;
-    border-radius: 4px; padding: 7px 8px; outline: none;
-  }
-  .seg-price-input, .seg-qty-input {
+  .seg-name-input, .seg-amount-input {
     font-size: 13px; background: var(--field); border: none; border-radius: 4px;
-    padding: 6px 7px; outline: none; text-align: right; font-variant-numeric: tabular-nums;
+    padding: 7px 8px; outline: none;
   }
-  .seg-price-input { width: 88px; }
-  .seg-qty-input { width: 48px; }
-  .seg-name-input:focus, .seg-price-input:focus, .seg-qty-input:focus { box-shadow: 0 0 0 1px var(--accent); }
-  .seg-op { font-size: 12px; color: var(--faint); }
-  .seg-total { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; margin-left: auto; padding-right: 4px; }
+  .seg-name-input { flex: 1; min-width: 0; }
+  .seg-amount-input { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+  .seg-name-input:focus, .seg-amount-input:focus { box-shadow: 0 0 0 1px var(--accent); }
   .yen-label { font-size: 12px; color: var(--faint); width: 14px; }
 
   .add-seg-btn {
@@ -186,23 +178,23 @@
     {
       id: "g-sub", name: "サブスク",
       segments: [
-        { id: "s-base-1", name: "毎月の基本料", unitPrice: 450000, qty: 1 },
-        { id: "s-sub", name: "サブスク（全部込み）", unitPrice: 300000, qty: 1 }
+        { id: "s-base-1", name: "毎月の基本料", amount: 450000 },
+        { id: "s-sub", name: "サブスク（全部込み）", amount: 300000 }
       ]
     },
     {
       id: "g-spot", name: "スポット",
       segments: [
-        { id: "s-base-2", name: "毎月の基本料", unitPrice: 450000, qty: 1 },
-        { id: "s-1", name: "役員報酬・社会保険料を決める", unitPrice: 30000, qty: 1 },
-        { id: "s-2", name: "社労士・司法書士との連携", unitPrice: 5000, qty: 1 },
-        { id: "s-3", name: "税額シミュレーション（法人税）", unitPrice: 20000, qty: 2 },
-        { id: "s-4", name: "税額シミュレーション（消費税）", unitPrice: 20000, qty: 2 },
-        { id: "s-5", name: "決算・申告（法人税）", unitPrice: 120000, qty: 1 },
-        { id: "s-6", name: "消費税申告", unitPrice: 30000, qty: 1 },
-        { id: "s-7", name: "中間申告", unitPrice: 10000, qty: 3 },
-        { id: "s-8", name: "議事録作成", unitPrice: 10000, qty: 1 },
-        { id: "s-9", name: "消費税シミュレーション・届出", unitPrice: 30000, qty: 1 }
+        { id: "s-base-2", name: "毎月の基本料", amount: 450000 },
+        { id: "s-1", name: "役員報酬・社会保険料を決める", amount: 30000 },
+        { id: "s-2", name: "社労士・司法書士との連携", amount: 5000 },
+        { id: "s-3", name: "税額シミュレーション（法人税）", amount: 40000 },
+        { id: "s-4", name: "税額シミュレーション（消費税）", amount: 40000 },
+        { id: "s-5", name: "決算・申告（法人税）", amount: 120000 },
+        { id: "s-6", name: "消費税申告", amount: 30000 },
+        { id: "s-7", name: "中間申告", amount: 30000 },
+        { id: "s-8", name: "議事録作成", amount: 10000 },
+        { id: "s-9", name: "消費税シミュレーション・届出", amount: 30000 }
       ]
     }
   ];
@@ -211,7 +203,7 @@
   // File → 共有 → ウェブに公開 → シート「CSV出力」 → 形式「カンマ区切りの値(.csv)」
   // 未設定（このままの状態）の場合は、スプレッドシート連携をスキップして
   // ローカル保存データ／初期値のみで動作します。
-  var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHFd1vSHOupv6-Hat4i4-NoLQXplsDc3He5ydFNJELMAvEMkpXFNxYZR4iVRNJIQ/pub?gid=577900453&single=true&output=csv";
+  var CSV_URL = "";
   // 例）var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-xxxxxxx/pub?gid=123456789&single=true&output=csv";
 
   var groups = loadInitial();
@@ -237,34 +229,11 @@
       var raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return clone(DEFAULT_GROUPS);
       var parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return normalizeGroups(parsed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       return clone(DEFAULT_GROUPS);
     } catch (e) {
       return clone(DEFAULT_GROUPS);
     }
-  }
-
-  function computeAmount(s) {
-    return (Number(s.unitPrice) || 0) * (Number(s.qty) || 0);
-  }
-
-  // 旧バージョン（amountのみ）のデータを unitPrice×qty 形式に変換する
-  function normalizeSegment(s) {
-    if (s.unitPrice === undefined && s.amount !== undefined) {
-      return { id: s.id, name: s.name, unitPrice: Number(s.amount) || 0, qty: 1 };
-    }
-    return {
-      id: s.id,
-      name: s.name,
-      unitPrice: s.unitPrice === undefined ? 0 : s.unitPrice,
-      qty: s.qty === undefined ? 1 : s.qty,
-    };
-  }
-
-  function normalizeGroups(gs) {
-    return gs.map(function (g) {
-      return { id: g.id, name: g.name, segments: g.segments.map(normalizeSegment) };
-    });
   }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -314,7 +283,7 @@
         map[category] = { id: uid("g"), name: category, segments: [] };
         order.push(category);
       }
-      map[category].segments.push({ id: uid("s") + "-" + idx, name: name, unitPrice: amount, qty: 1 });
+      map[category].segments.push({ id: uid("s") + "-" + idx, name: name, amount: amount });
     });
     return order.map(function (cat) { return map[cat]; });
   }
@@ -366,7 +335,7 @@
   }
 
   function groupTotal(g) {
-    return g.segments.reduce(function (sum, s) { return sum + computeAmount(s); }, 0);
+    return g.segments.reduce(function (sum, s) { return sum + (Number(s.amount) || 0); }, 0);
   }
 
   function render() {
@@ -407,16 +376,15 @@
       track.style.width = widthPct + "%";
 
       g.segments.forEach(function (s, i) {
-        var segAmount = computeAmount(s);
-        var segPct = total > 0 ? (segAmount / total) * 100 : 0;
+        var segPct = total > 0 ? ((Number(s.amount) || 0) / total) * 100 : 0;
         var color = PALETTE[i % PALETTE.length];
         var seg = document.createElement("div");
         seg.className = "seg";
         seg.style.width = segPct + "%";
         seg.style.backgroundColor = color;
-        seg.title = s.name + "：" + yen(segAmount) + "（" + yen(s.unitPrice) + " × " + (s.qty === "" ? 0 : s.qty) + "）";
+        seg.title = s.name + "：" + yen(s.amount);
         if (segPct > 10) {
-          seg.textContent = s.name + "（" + yen(segAmount) + "）";
+          seg.textContent = s.name + "（" + yen(s.amount) + "）";
         }
         track.appendChild(seg);
       });
@@ -461,16 +429,13 @@
       card.appendChild(head);
 
       g.segments.forEach(function (s, i) {
-        var segBlock = document.createElement("div");
-        segBlock.className = "seg-block";
-
-        var rowTop = document.createElement("div");
-        rowTop.className = "seg-row-top";
+        var segRow = document.createElement("div");
+        segRow.className = "seg-row";
 
         var swatch = document.createElement("span");
         swatch.className = "swatch";
         swatch.style.backgroundColor = PALETTE[i % PALETTE.length];
-        rowTop.appendChild(swatch);
+        segRow.appendChild(swatch);
 
         var nameEl = document.createElement("input");
         nameEl.className = "seg-name-input";
@@ -481,7 +446,24 @@
           renderBars();
           scheduleSave();
         });
-        rowTop.appendChild(nameEl);
+        segRow.appendChild(nameEl);
+
+        var amountEl = document.createElement("input");
+        amountEl.className = "seg-amount-input";
+        amountEl.type = "number";
+        amountEl.value = s.amount;
+        amountEl.placeholder = "金額";
+        amountEl.addEventListener("input", function (e) {
+          s.amount = e.target.value === "" ? "" : Number(e.target.value);
+          renderBars();
+          scheduleSave();
+        });
+        segRow.appendChild(amountEl);
+
+        var yenLabel = document.createElement("span");
+        yenLabel.className = "yen-label";
+        yenLabel.textContent = "円";
+        segRow.appendChild(yenLabel);
 
         var delSegBtn = document.createElement("button");
         delSegBtn.className = "icon-btn";
@@ -491,68 +473,16 @@
           g.segments = g.segments.filter(function (x) { return x.id !== s.id; });
           render();
         });
-        rowTop.appendChild(delSegBtn);
+        segRow.appendChild(delSegBtn);
 
-        segBlock.appendChild(rowTop);
-
-        var rowBottom = document.createElement("div");
-        rowBottom.className = "seg-row-bottom";
-
-        var priceEl = document.createElement("input");
-        priceEl.className = "seg-price-input";
-        priceEl.type = "number";
-        priceEl.value = s.unitPrice;
-        priceEl.placeholder = "単価";
-        priceEl.title = "単価（円）";
-        priceEl.addEventListener("input", function (e) {
-          s.unitPrice = e.target.value === "" ? "" : Number(e.target.value);
-          updateTotalLabel();
-          renderBars();
-          scheduleSave();
-        });
-        rowBottom.appendChild(priceEl);
-
-        var yenLabel1 = document.createElement("span");
-        yenLabel1.className = "seg-op";
-        yenLabel1.textContent = "円 ×";
-        rowBottom.appendChild(yenLabel1);
-
-        var qtyEl = document.createElement("input");
-        qtyEl.className = "seg-qty-input";
-        qtyEl.type = "number";
-        qtyEl.value = s.qty;
-        qtyEl.placeholder = "回数";
-        qtyEl.title = "回数（月・年など何回分か）";
-        qtyEl.addEventListener("input", function (e) {
-          s.qty = e.target.value === "" ? "" : Number(e.target.value);
-          updateTotalLabel();
-          renderBars();
-          scheduleSave();
-        });
-        rowBottom.appendChild(qtyEl);
-
-        var qtyLabel = document.createElement("span");
-        qtyLabel.className = "seg-op";
-        qtyLabel.textContent = "回";
-        rowBottom.appendChild(qtyLabel);
-
-        var totalLabel = document.createElement("span");
-        totalLabel.className = "seg-total";
-        function updateTotalLabel() {
-          totalLabel.textContent = "= " + yen(computeAmount(s));
-        }
-        updateTotalLabel();
-        rowBottom.appendChild(totalLabel);
-
-        segBlock.appendChild(rowBottom);
-        card.appendChild(segBlock);
+        card.appendChild(segRow);
       });
 
       var addSegBtn = document.createElement("button");
       addSegBtn.className = "add-seg-btn";
       addSegBtn.textContent = "＋ 項目を追加";
       addSegBtn.addEventListener("click", function () {
-        g.segments.push({ id: uid("s"), name: "新しい項目", unitPrice: 10000, qty: 1 });
+        g.segments.push({ id: uid("s"), name: "新しい項目", amount: 10000 });
         render();
       });
       card.appendChild(addSegBtn);
@@ -564,7 +494,7 @@
   document.getElementById("addGroupBtn").addEventListener("click", function () {
     groups.push({
       id: uid("g"), name: "新しい比較",
-      segments: [{ id: uid("s"), name: "基本料", unitPrice: 20000, qty: 1 }]
+      segments: [{ id: uid("s"), name: "基本料", amount: 20000 }]
     });
     render();
   });
